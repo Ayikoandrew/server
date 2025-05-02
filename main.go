@@ -1,7 +1,19 @@
 package main
 
-import "fmt"
+import (
+	"log/slog"
+
+	"github.com/Ayikoandrew/server/api"
+	"github.com/Ayikoandrew/server/database"
+)
 
 func main() {
-	fmt.Println("Hello")
+	listenAddr := ":40000"
+	store := database.NewStorage()
+	if err := store.Init(); err != nil {
+		slog.Error("error creating database table", "err", err)
+	}
+	server := api.NewServer(listenAddr, store)
+
+	server.Run()
 }
