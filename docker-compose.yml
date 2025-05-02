@@ -4,30 +4,28 @@ services:
     container_name: engine
     build: .
     environment:
-      - DATABASE_URL=host=liora port={DB_PORT} password={POSTGRES_PASSWORD} user={POSTGRES_USER} dbname={POSTGRES_DB} sslmode=disable
-      - REDIS_URL=redis://redis:{REDIS_PORT}
+      - DATABASE_URL=host=liora port=${DB_PORT} password=${POSTGRES_PASSWORD} user=${POSTGRES_USER} dbname=${POSTGRES_DB} sslmode=disable
+      - REDIS_URL=redis://redis:${REDIS_PORT}
     ports:
-      - "127.0.0.1:{HOST_PORT}"
+      - "127.0.0.1:${HOST_PORT}:40000"
     depends_on:
       liora:
         condition: service_healthy
       redis:
         condition: service_healthy
-      networks:
-        - app-network
-      healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:40000/health"]
-        interval: 30s
-        timeout: 10s
-        retries: 3
-
-      logging:
-        driver: json-file
-        options:
-          max-size: "10m"
-          max-file: "3"
-
-      deploy:
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:40000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
       resources:
         limits:
           cpus: "0.50"
@@ -42,7 +40,7 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_DB=${POSTGRES_DB}
     ports:
-      - "127.0.0.1:${DB_PORT}:${DB_PORT}"
+      - "127.0.0.1:${DB_PORT}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -61,7 +59,7 @@ services:
     volumes:
       - redisdata:/data
     ports:
-      - "127.0.0.1:{REDIS_PORT}:{REDIS_PORT}"
+      - "127.0.0.1:${REDIS_PORT}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -69,14 +67,10 @@ services:
       retries: 5
     networks:
       - app-network
-    checkout:
-      test: ["CMD", "curl", "-f", "http://localhost:40000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
 networks:
   app-network:
+    name: server_network
     driver: bridge
 
 volumes:
