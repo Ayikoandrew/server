@@ -58,7 +58,6 @@ jobs:
     name: Telegram Notification
     needs: [test, docker]
     runs-on: ubuntu-latest
-    # Only trigger if test/docker fails (remove 'if: always()')
     if: failure()
     steps:
       - name: Send Telegram Alert
