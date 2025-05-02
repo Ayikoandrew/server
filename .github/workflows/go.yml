@@ -23,7 +23,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.20"
+          go-version: "1.24"
 
       - name: Test
         run: go test -v ./...
@@ -57,17 +57,33 @@ jobs:
   notify:
     name: Telegram Notification
     needs: [test, docker]
-    if: always()
     runs-on: ubuntu-latest
+    # Only trigger if test/docker fails (remove 'if: always()')
+    if: failure()
     steps:
       - name: Send Telegram Alert
         run: |
           MESSAGE="
-          *${{ github.repository }} - CI/CD Result*
-          \n*Status*: ${{ job.status }} $([ '${{ job.status }}' = 'success' ] && echo '✅' || echo '❌')
+          ❌ *${{ github.repository }} - CI/CD FAILED*
           \n*Branch*: \`${{ github.ref }}\`
+          \n*Failed Job*: ${{ needs.test.result || needs.docker.result }}
           \n*Commit*: [View Here](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+          \n*Logs*: [Action Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
           "
+          curl -s -X POST \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "text=$MESSAGE" \
+            -d "parse_mode=MarkdownV2"
+
+  notify-success:
+    name: Telegram Success
+    needs: [test, docker]
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - run: |
+          MESSAGE="✅ *${{ github.repository }} - CI/CD Passed*"
           curl -s -X POST \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
