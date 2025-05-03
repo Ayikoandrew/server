@@ -3,6 +3,10 @@
 
 name: Go CI/CD with Docker
 
+permissions:
+  packages: write
+  contents: read
+
 on:
   push:
     branches: ["main"]
