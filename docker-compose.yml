@@ -8,7 +8,7 @@ services:
       - REDIS_URL=redis://redis:${REDIS_PORT}
       - TEST_DATABASE_URL=host=liora-test port=${TEST_POSTGRES_PORT} password=${TEST_POSTGRES_PASSWORD} user=${TEST_POSTGRES_USER} dbname=${TEST_POSTGRES_DB} sslmode=disable
     ports:
-      - "127.0.0.1:${HOST_PORT}:40000"
+      - "127.0.0.1:${PORT}:8080"
     depends_on:
       liora:
         condition: service_healthy
