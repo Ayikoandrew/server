@@ -9,6 +9,9 @@ import (
 )
 
 func Test_CreateAccount(t *testing.T) {
+	if os.Getenv("CI") == "true" {
+		t.Skip("Skipping database test in CI environment")
+	}
 	os.Setenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/liora?sslmode=disable")
 	// url := os.Getenv("TEST_DATABASE_URL")
 	store := database.NewStorage()
@@ -23,7 +26,7 @@ func Test_CreateAccount(t *testing.T) {
 		FirstName:   "Test",
 		LastName:    "User",
 		PhoneNumber: "1234567890",
-		Email:       "test@example.com",
+		Email:       "test1@example.com",
 		Password:    []byte("password123"),
 	}
 

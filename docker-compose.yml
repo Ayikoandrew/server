@@ -7,7 +7,7 @@ services:
       - DATABASE_URL=host=liora port=${DB_PORT} password=${POSTGRES_PASSWORD} user=${POSTGRES_USER} dbname=${POSTGRES_DB} sslmode=disable
       - REDIS_URL=redis://redis:${REDIS_PORT}
     ports:
-      - "127.0.0.1:${PORT}:${PORT}"
+      - "127.0.0.1:${HOST_PORT}:40000"
     depends_on:
       liora:
         condition: service_healthy
