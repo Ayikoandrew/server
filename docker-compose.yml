@@ -5,7 +5,7 @@ services:
     build: .
     environment:
       - DATABASE_URL=host=liora port=${DB_PORT} password=${POSTGRES_PASSWORD} user=${POSTGRES_USER} dbname=${POSTGRES_DB} sslmode=disable
-      - REDIS_URL=redis://redis:${REDIS_PORT}
+      - REDIS_URL=redis://redis:${REDIS_PORT}/0?protocol=3 #"redis://user:password@localhost:${REDIS_PORT}/0?protocol=3"
     ports:
       - "127.0.0.1:${PORT}:${PORT}"
     depends_on:
