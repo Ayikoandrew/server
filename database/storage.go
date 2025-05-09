@@ -75,10 +75,10 @@ func (s *Storage) CreateTable() error {
         expires_at TIMESTAMPTZ NOT NULL,
         revoked BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMPTZ DEFAULT NOW (),
-        FOREIGN KEY (user_id) REFERENCES users (id),
+        FOREIGN KEY (user_id) REFERENCES users (id)
     );
 
-	CREATE INDEX idx_refresh_token ON user_sessions (refresh_token);
+	CREATE INDEX IF NOT EXISTS idx_refresh_token ON user_sessions (refresh_token);
 	`
 
 	tx, err := s.db.Begin()
