@@ -24,7 +24,7 @@ func Test_CreateAccount(t *testing.T) {
 		LastName:    "User",
 		PhoneNumber: "1234567890",
 		Email:       "test@example.com",
-		Password:    []byte("password123"),
+		Password:    "password123",
 	}
 
 	if err := store.CreateAccount(testAccount); err != nil {

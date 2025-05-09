@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -13,6 +15,7 @@ import (
 
 	"github.com/Ayikoandrew/server/database"
 	"github.com/Ayikoandrew/server/middleware"
+	"github.com/Ayikoandrew/server/security"
 	"github.com/Ayikoandrew/server/types"
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
@@ -35,8 +38,12 @@ func (s *Server) Run() {
 
 	router.Use(middleware.LoggingMiddleware)
 
-	router.HandleFunc("/users", makeHTTPHandlerFunc(s.createAccount)).Methods(http.MethodPost)
-	router.HandleFunc("/health", makeHTTPHandlerFunc(s.handleHealth)).Methods(http.MethodGet)
+	router.HandleFunc("/signup",
+		middleware.RateLimitMiddlewareTokenBucket(makeHTTPHandlerFunc(s.createAccount))).Methods(http.MethodPost)
+	router.HandleFunc("/login",
+		middleware.RateLimitMiddlewareTokenBucket(makeHTTPHandlerFunc(s.loginAccount))).Methods(http.MethodPost)
+	router.HandleFunc("/health",
+		makeHTTPHandlerFunc(s.handleHealth)).Methods(http.MethodGet)
 
 	serve := &http.Server{
 		Addr:         s.listenAddr,
@@ -74,6 +81,38 @@ func (s *Server) Run() {
 	}
 }
 
+func (s *Server) loginAccount(w http.ResponseWriter, r *http.Request) error {
+	account := new(types.LoginRequest)
+	if err := json.NewDecoder(r.Body).Decode(&account); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return nil
+	}
+
+	if account.Password == "" && account.Username == "" {
+		http.Error(w, "Username and password are required", http.StatusBadRequest)
+		return nil
+	}
+
+	user, err := s.store.Authenticate(account.Password, account.Username)
+	if err != nil {
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) || errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+			return nil
+		}
+		return err
+	}
+
+	client := database.GetRedisClient()
+	ctx := context.Background()
+	userKey := fmt.Sprintf("user:%s:accessToken", user.User.ID)
+	if err := client.Set(ctx, userKey, user.AccessToken, 15*time.Minute).Err(); err != nil {
+		slog.Error("Failed to store user token in Redis", "error", err, "userId", user.User.ID)
+	}
+
+	security.SetTokenCookies(w, user.AccessToken, user.RefreshToken)
+	return writeJSON(w, http.StatusOK, user)
+}
+
 func (s *Server) createAccount(w http.ResponseWriter, r *http.Request) error {
 	account := new(types.Account)
 
@@ -86,7 +125,7 @@ func (s *Server) createAccount(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	account.Password = hashPassword
+	account.Password = string(hashPassword)
 	if err := s.store.CreateAccount(account); err != nil {
 		return err
 	}
