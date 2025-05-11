@@ -8,4 +8,5 @@ type DBHandler interface {
 	Ping() error
 	CreateAccount(account *types.Account) error
 	Authenticate(password, username string) (types.LoginResponse, error)
+	StoreRefreshToken(*types.RefreshToken)
 }
