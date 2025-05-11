@@ -31,7 +31,6 @@ func InitRedis() {
 func NewRDB() *redis.Client {
 	url := os.Getenv("REDIS_URL")
 	if url == "" {
-
 		host := getEnv("REDIS_HOST", "redis")
 		port := getEnv("REDIS_PORT", "6379")
 		password := os.Getenv("REDIS_PASSWORD")
@@ -41,7 +40,15 @@ func NewRDB() *redis.Client {
 	opts, err := redis.ParseURL(url)
 	if err != nil {
 		slog.Error("Invalid Redis URL", "error", err)
-		panic(fmt.Sprintf("Invalid Redis URL: %v", err))
+
+		host := getEnv("REDIS_HOST", "redis")
+		port := getEnv("REDIS_PORT", "6379")
+
+		return redis.NewClient(&redis.Options{
+			Addr:     fmt.Sprintf("%s:%s", host, port),
+			Password: os.Getenv("REDIS_PASSWORD"),
+			DB:       0,
+		})
 	}
 
 	client := redis.NewClient(opts)
@@ -66,10 +73,4 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
-}
-
-func atoi(s string) int {
-	var i int
-	fmt.Sscanf(s, "%d", &i)
-	return i
 }
