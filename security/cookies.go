@@ -2,12 +2,10 @@ package security
 
 import (
 	"net/http"
-	"os"
 )
 
 func SetTokenCookies(w http.ResponseWriter, accessToken, refreshToken string) {
 
-	isProduction := os.Getenv("ENV") == "production"
 	http.SetCookie(
 		w,
 		&http.Cookie{
@@ -15,7 +13,7 @@ func SetTokenCookies(w http.ResponseWriter, accessToken, refreshToken string) {
 			Value:    accessToken,
 			Path:     "/",
 			HttpOnly: false,
-			Secure:   isProduction,
+			Secure:   true,
 			MaxAge:   15 * 60,
 			SameSite: http.SameSiteStrictMode,
 		},
@@ -28,7 +26,7 @@ func SetTokenCookies(w http.ResponseWriter, accessToken, refreshToken string) {
 			Value:    refreshToken,
 			Path:     "/",
 			HttpOnly: true,
-			Secure:   isProduction,
+			Secure:   true,
 			MaxAge:   7 * 24 * 60 * 60,
 			SameSite: http.SameSiteStrictMode,
 		},
