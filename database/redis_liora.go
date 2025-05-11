@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -55,48 +56,57 @@ func NewRDB() *redis.Client {
 	// Log connection attempt (without showing password)
 	slog.Info("Connecting to Redis", "url", maskPasswordInURL(url))
 
-	// Create client either from URL or with explicit options
-	var client *redis.Client
-
-	// Try parsing URL first
+	// Parse URL first
 	opts, err := redis.ParseURL(url)
 	if err != nil {
-		slog.Error("Failed to parse Redis URL, falling back to direct connection", "error", err)
-
-		// Fall back to direct connection options
-		redisHost := os.Getenv("REDIS_HOST")
-		if redisHost == "" {
-			redisHost = "redis"
-		}
-
-		redisPort := os.Getenv("REDIS_PORT")
-		if redisPort == "" {
-			redisPort = "6379"
-		}
-
-		client = redis.NewClient(&redis.Options{
-			Addr:     fmt.Sprintf("%s:%s", redisHost, redisPort),
-			Password: os.Getenv("REDIS_PASSWORD"),
-			DB:       0,
-		})
-	} else {
-		client = redis.NewClient(opts)
+		slog.Error("Failed to parse Redis URL", "error", err)
+		// Don't fall back to direct connection - if URL parsing fails, it's better to fail fast
+		panic(fmt.Sprintf("Invalid Redis URL: %v", err))
 	}
+
+	// Create client with options
+	client := redis.NewClient(opts)
 
 	// Add retry options
 	client.Options().MaxRetries = 5
 	client.Options().MinRetryBackoff = 100 * time.Millisecond
 	client.Options().MaxRetryBackoff = 2 * time.Second
 
+	// Verify connection
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if _, err := client.Ping(ctx).Result(); err != nil {
+		slog.Error("Failed to connect to Redis", "error", err)
+		panic(fmt.Sprintf("Redis connection failed: %v", err))
+	}
+
 	return client
 }
 
-// Helper function to mask password in URL for logging
+// maskPasswordInURL masks the password in a Redis URL for safe logging
+// Example: "redis://:secret@redis:6379/0" becomes "redis://:****@redis:6379/0"
 func maskPasswordInURL(url string) string {
-	if strings.Contains(url, "@") {
-		parts := strings.Split(url, "@")
-		authParts := strings.Split(parts[0], ":")
-		return authParts[0] + ":****@" + parts[1]
+	// Handle empty URL
+	if url == "" {
+		return url
 	}
-	return url
+
+	// Split into parts before and after @
+	atParts := strings.Split(url, "@")
+	if len(atParts) < 2 {
+		return url // No @ found, return as-is
+	}
+
+	// Split the auth part (before @)
+	authPart := atParts[0]
+	colonParts := strings.Split(authPart, ":")
+
+	// If we have a password part (format is redis://:password@host)
+	if len(colonParts) >= 3 {
+		colonParts[2] = "****" // Mask password
+		authPart = strings.Join(colonParts, ":")
+	}
+
+	// Reconstruct the URL
+	return authPart + "@" + strings.Join(atParts[1:], "@")
 }
