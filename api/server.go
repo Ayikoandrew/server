@@ -109,6 +109,14 @@ func (s *Server) loginAccount(w http.ResponseWriter, r *http.Request) error {
 		slog.Error("Failed to store user token in Redis", "error", err, "userId", user.User.ID)
 	}
 
+	token := &types.RefreshToken{
+		UserID:       user.User.ID,
+		RefreshToken: user.RefreshToken,
+		ExpiresAt:    time.Now().Add(7 * 24 * 60 * 60),
+	}
+
+	s.store.StoreRefreshToken(token)
+
 	security.SetTokenCookies(w, user.AccessToken, user.RefreshToken)
 	return writeJSON(w, http.StatusOK, user)
 }
