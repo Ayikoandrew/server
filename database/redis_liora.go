@@ -30,83 +30,46 @@ func InitRedis() {
 
 func NewRDB() *redis.Client {
 	url := os.Getenv("REDIS_URL")
-
-	// If REDIS_URL is not provided, construct it from components
 	if url == "" {
-		redisHost := os.Getenv("REDIS_HOST")
-		if redisHost == "" {
-			redisHost = "redis" // Default to service name in docker-compose
-		}
 
-		redisPort := os.Getenv("REDIS_PORT")
-		if redisPort == "" {
-			redisPort = "6379" // Default Redis port
-		}
-
-		redisPassword := os.Getenv("REDIS_PASSWORD")
-
-		// Format URL with password
-		if redisPassword != "" {
-			url = fmt.Sprintf("redis://:%s@%s:%s/0", redisPassword, redisHost, redisPort)
-		} else {
-			url = fmt.Sprintf("redis://%s:%s/0", redisHost, redisPort)
-		}
+		host := getEnv("REDIS_HOST", "redis")
+		port := getEnv("REDIS_PORT", "6379")
+		password := os.Getenv("REDIS_PASSWORD")
+		url = fmt.Sprintf("redis://:%s@%s:%s/0", password, host, port)
 	}
 
-	// Log connection attempt (without showing password)
-	slog.Info("Connecting to Redis", "url", maskPasswordInURL(url))
-
-	// Parse URL first
 	opts, err := redis.ParseURL(url)
 	if err != nil {
-		slog.Error("Failed to parse Redis URL", "error", err)
-		// Don't fall back to direct connection - if URL parsing fails, it's better to fail fast
+		slog.Error("Invalid Redis URL", "error", err)
 		panic(fmt.Sprintf("Invalid Redis URL: %v", err))
 	}
 
-	// Create client with options
 	client := redis.NewClient(opts)
 
-	// Add retry options
-	client.Options().MaxRetries = 5
-	client.Options().MinRetryBackoff = 100 * time.Millisecond
-	client.Options().MaxRetryBackoff = 2 * time.Second
-
-	// Verify connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
 	if _, err := client.Ping(ctx).Result(); err != nil {
-		slog.Error("Failed to connect to Redis", "error", err)
+		maskedURL := strings.ReplaceAll(url, os.Getenv("REDIS_PASSWORD"), "****")
+		slog.Error("Failed to connect to Redis",
+			"error", err,
+			"url", maskedURL)
 		panic(fmt.Sprintf("Redis connection failed: %v", err))
 	}
 
+	slog.Info("Successfully connected to Redis")
 	return client
 }
 
-// maskPasswordInURL masks the password in a Redis URL for safe logging
-// Example: "redis://:secret@redis:6379/0" becomes "redis://:****@redis:6379/0"
-func maskPasswordInURL(url string) string {
-	// Handle empty URL
-	if url == "" {
-		return url
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
 	}
+	return defaultValue
+}
 
-	// Split into parts before and after @
-	atParts := strings.Split(url, "@")
-	if len(atParts) < 2 {
-		return url // No @ found, return as-is
-	}
-
-	// Split the auth part (before @)
-	authPart := atParts[0]
-	colonParts := strings.Split(authPart, ":")
-
-	// If we have a password part (format is redis://:password@host)
-	if len(colonParts) >= 3 {
-		colonParts[2] = "****" // Mask password
-		authPart = strings.Join(colonParts, ":")
-	}
-
-	// Reconstruct the URL
-	return authPart + "@" + strings.Join(atParts[1:], "@")
+func atoi(s string) int {
+	var i int
+	fmt.Sscanf(s, "%d", &i)
+	return i
 }
