@@ -1,7 +1,9 @@
 package database
 
 import (
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"os"
@@ -71,7 +73,6 @@ func (s *Storage) CreateTable() error {
         id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
         user_id UUID NOT NULL,
         refresh_token TEXT NOT NULL,
-        device_info TEXT,
         expires_at TIMESTAMPTZ NOT NULL,
         revoked BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMPTZ DEFAULT NOW (),
@@ -111,7 +112,7 @@ func (s *Storage) CreateAccount(account *types.Account) error {
 
 	query := `INSERT INTO users 
 	(firstName, lastName, phoneNumber, email, passwordHash) 
-	VALUEs ($1, $2, $3, $4, $5) RETURNING id`
+	VALUES ($1, $2, $3, $4, $5) RETURNING id`
 
 	var id string
 	err = tx.QueryRow(query,
@@ -167,4 +168,26 @@ func (s *Storage) Authenticate(password, email string) (types.LoginResponse, err
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
+}
+
+func (s *Storage) StoreRefreshToken(refresh *types.RefreshToken) {
+
+	query := `
+		INSERT INTO user_sessions (user_id, refresh_token, expires_at, revoked) 
+		VALUES ($1, $2, $3, $4) RETURNING id
+			`
+	h := sha256.New()
+	h.Write([]byte(refresh.RefreshToken))
+	hashedToken := h.Sum(nil)
+	hexToken := hex.EncodeToString(hashedToken[:])
+	_, err := s.db.Exec(query,
+		refresh.UserID,
+		hexToken,
+		refresh.ExpiresAt,
+		refresh.Revoked,
+	)
+	if err != nil {
+		slog.Error("Error inserting user session", "err", err)
+		return
+	}
 }
