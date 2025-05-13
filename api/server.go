@@ -46,7 +46,7 @@ func (s *Server) Run() {
 	router.HandleFunc("/health",
 		makeHTTPHandlerFunc(s.handleHealth)).Methods(http.MethodGet)
 
-	router.HandleFunc("/", handlers.VisitorCounterHandler)
+	router.Handle("/", middleware.RateLimitMiddlewareTokenBucket(http.HandlerFunc(handlers.VisitorCounterHandler)))
 
 	serve := &http.Server{
 		Addr:         s.listenAddr,
