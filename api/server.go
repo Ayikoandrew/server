@@ -38,9 +38,9 @@ func (s *Server) Run() {
 
 	router.Use(middleware.LoggingMiddleware)
 
-	router.HandleFunc("/signup",
+	router.Handle("/signup",
 		middleware.RateLimitMiddlewareTokenBucket(makeHTTPHandlerFunc(s.createAccount))).Methods(http.MethodPost)
-	router.HandleFunc("/login",
+	router.Handle("/login",
 		middleware.RateLimitMiddlewareTokenBucket(makeHTTPHandlerFunc(s.loginAccount))).Methods(http.MethodPost)
 	router.HandleFunc("/health",
 		makeHTTPHandlerFunc(s.handleHealth)).Methods(http.MethodGet)
