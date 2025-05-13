@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"sync"
@@ -24,7 +25,7 @@ var DefaultConfig = RateLimitConfig{
 type TokenBucket struct {
 	capacity     int
 	tokens       int
-	refillRate   int
+	refillRate   float64
 	lastRefill   time.Time
 	lastAccessed time.Time
 	mu           sync.Mutex
@@ -33,21 +34,21 @@ type TokenBucket struct {
 	config       RateLimitConfig
 }
 
-func NewTokenBucket(requestPerMinute, refillRate int) *TokenBucket {
+func NewTokenBucket(requestPerMinute, refillRate int, ctx context.Context) *TokenBucket {
 	return NewTokenBucketWithConfig(RateLimitConfig{
 		RequestPerMinute:       requestPerMinute,
 		GlobalRequestPerMinute: requestPerMinute * 10,
 		CleanUpInterval:        5 * time.Minute,
 		IPExpiryInterval:       30 * time.Minute,
-	})
+	}, ctx)
 }
 
-func NewTokenBucketWithConfig(config RateLimitConfig) *TokenBucket {
+func NewTokenBucketWithConfig(config RateLimitConfig, ctx context.Context) *TokenBucket {
 	now := time.Now()
 	tb := &TokenBucket{
 		capacity:     config.RequestPerMinute,
 		tokens:       config.RequestPerMinute,
-		refillRate:   config.RequestPerMinute / 60,
+		refillRate:   float64(config.RequestPerMinute) / 60.0,
 		lastRefill:   now,
 		lastAccessed: now,
 		ipBuckets:    make(map[string]*TokenBucket),
@@ -55,24 +56,29 @@ func NewTokenBucketWithConfig(config RateLimitConfig) *TokenBucket {
 	}
 
 	tb.globalBucket = &TokenBucket{
-		capacity:     config.RequestPerMinute,
-		tokens:       config.RequestPerMinute,
-		refillRate:   config.RequestPerMinute / 60,
+		capacity:     config.GlobalRequestPerMinute,
+		tokens:       config.GlobalRequestPerMinute,
+		refillRate:   float64(config.GlobalRequestPerMinute) / 60.0,
 		lastRefill:   now,
 		lastAccessed: now,
 		config:       config,
 	}
 
-	go tb.startCleaner()
+	go tb.startCleaner(ctx)
 	return tb
 }
 
-func (t *TokenBucket) startCleaner() {
+func (t *TokenBucket) startCleaner(ctx context.Context) {
 	ticker := time.NewTicker(t.globalBucket.config.CleanUpInterval)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		t.cleanup()
+	for {
+		select {
+		case <-ticker.C:
+			t.cleanup()
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 
@@ -118,27 +124,23 @@ func (t *TokenBucket) Allow(ip string) bool {
 	ipBucket.lastAccessed = now
 	ipBucket.refill()
 
-	if ipBucket.tokens > 0 && t.globalBucket.tokens > 0 {
+	if ipBucket.tokens > 0 {
 		ipBucket.tokens--
 		t.globalBucket.tokens--
-		ipBucket.lastAccessed = now
 		return true
 	}
 
-	if ipBucket.tokens <= 0 {
-		log.Printf("Rate limit exceeded for IP: %s", ip)
-	}
-
+	log.Printf("Rate limit exceeded for IP: %s", ip)
 	return false
 }
 
 func (t *TokenBucket) refill() {
 	now := time.Now()
-	elapsed := now.Sub(t.lastAccessed)
-	tokensToAdd := int(elapsed.Seconds()) * t.refillRate
+	elapsed := now.Sub(t.lastRefill)
+	tokensToAdd := float64(elapsed.Seconds()) * t.refillRate
 
 	if tokensToAdd > 0 {
-		t.tokens += tokensToAdd
+		t.tokens += int(tokensToAdd)
 		if t.tokens > t.capacity {
 			t.tokens = t.capacity
 		}
@@ -151,26 +153,26 @@ var (
 	once          sync.Once
 )
 
-func rateLimitMiddleware(next http.HandlerFunc) http.HandlerFunc {
+func RateLimitMiddleware(next http.Handler) http.Handler {
 	once.Do(func() {
-		globalLimiter = NewTokenBucketWithConfig(DefaultConfig)
+		globalLimiter = NewTokenBucketWithConfig(DefaultConfig, context.Background())
 		log.Printf("Rate limit initialized %d requests per minute per IP, %d global",
 			DefaultConfig.RequestPerMinute,
 			DefaultConfig.GlobalRequestPerMinute,
 		)
 	})
 
-	return func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		clientIP := getClientIP(r)
 
 		if !globalLimiter.Allow(clientIP) {
-			http.Error(w, "Rate limit exceeded. Please try again later.", http.StatusTooManyRequests)
+			http.Error(w, "Hmmmm, WTF are you doing?", http.StatusTooManyRequests)
 			return
 		}
-		next(w, r)
-	}
+		next.ServeHTTP(w, r)
+	})
 }
 
-func RateLimitMiddlewareTokenBucket(next http.HandlerFunc) http.HandlerFunc {
-	return rateLimitMiddleware(next)
+func RateLimitMiddlewareTokenBucket(next http.Handler) http.Handler {
+	return RateLimitMiddleware(next)
 }
