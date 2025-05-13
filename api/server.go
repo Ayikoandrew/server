@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/Ayikoandrew/server/database"
-	"github.com/Ayikoandrew/server/handlers"
 	"github.com/Ayikoandrew/server/middleware"
 	"github.com/Ayikoandrew/server/security"
 	"github.com/Ayikoandrew/server/types"
@@ -45,8 +44,6 @@ func (s *Server) Run() {
 		middleware.RateLimitMiddlewareTokenBucket(makeHTTPHandlerFunc(s.loginAccount))).Methods(http.MethodPost)
 	router.HandleFunc("/health",
 		makeHTTPHandlerFunc(s.handleHealth)).Methods(http.MethodGet)
-
-	router.Handle("/", middleware.RateLimitMiddlewareTokenBucket(http.HandlerFunc(handlers.VisitorCounterHandler)))
 
 	serve := &http.Server{
 		Addr:         s.listenAddr,
