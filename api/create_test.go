@@ -26,7 +26,7 @@ func Test_CreateAccount(t *testing.T) {
 		FirstName:   "Test",
 		LastName:    "User",
 		PhoneNumber: "1234567890",
-		Email:       "test@example.com",
+		Email:       "test10@example.com",
 		Password:    "password123",
 	}
 
