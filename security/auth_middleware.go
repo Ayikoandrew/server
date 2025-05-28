@@ -1,48 +1,53 @@
 package security
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 
+	"github.com/Ayikoandrew/server/database"
+	"github.com/Ayikoandrew/server/types"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func AuthMiddlewareJwt(next http.HandlerFunc) http.HandlerFunc {
+func ValidateAccessTokenMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tokenStr := r.Header.Get("auth-x-token")
-		token, err := ValidateAccessToken(tokenStr)
+		access := os.Getenv("ACCESS_TOKEN")
+		access_token, err := r.Cookie("access-token")
+
 		if err != nil {
-			WriteJSON(w, http.StatusForbidden, token)
-			return
+			slog.Error("Invalid access token")
+		}
+
+		token, err := jwt.ParseWithClaims(access_token.Value, &types.CustomClaims{}, func(t *jwt.Token) (interface{}, error) {
+			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method %+v", t.Header["alg"])
+			}
+			return []byte(access), nil
+		})
+
+		if err != nil {
+			slog.Error("Invalid access token")
+		}
+
+		claim, ok := token.Claims.(types.CustomClaims)
+
+		if !ok {
+			slog.Error("Invalid access token")
+		}
+
+		userID := claim.Subject
+		Token := database.Get(userID, context.Background())
+		redisToken, err := Token.Result()
+		if err != nil {
+			slog.Error("Invalid access token")
+		}
+
+		if access != redisToken {
+			slog.Error("Invalid access token")
 		}
 		next(w, r)
 	}
-}
-
-func ValidateAccessToken(tokenStr string) (*jwt.Token, error) {
-	access := os.Getenv("ACCESS_TOKEN")
-	return jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method %+v", t.Header["alg"])
-		}
-		return []byte(access), nil
-	})
-}
-
-func ValidateRefreshToken(tokenStr string) (*jwt.Token, error) {
-	refresh := os.Getenv("REFRESH_TOKEN")
-	return jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method %+v", t.Header["alg"])
-		}
-		return []byte(refresh), nil
-	})
-}
-
-func WriteJSON(w http.ResponseWriter, status int, v any) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	return json.NewEncoder(w).Encode(v)
 }
