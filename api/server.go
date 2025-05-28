@@ -6,17 +6,22 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/Ayikoandrew/server/database"
+	api "github.com/Ayikoandrew/server/functions"
 	"github.com/Ayikoandrew/server/middleware"
 	"github.com/Ayikoandrew/server/security"
 	"github.com/Ayikoandrew/server/types"
+	"github.com/Ayikoandrew/server/utils"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -36,14 +41,25 @@ func NewServer(listenAddr string, store database.DBHandler) *Server {
 func (s *Server) Run() {
 	router := mux.NewRouter()
 
+	// registry := prometheus.NewRegistry()
+	// promMiddleware := security.New(registry, nil)
 	router.Use(middleware.LoggingMiddleware)
+	// router.Use(func(h http.Handler) http.Handler {
+	// 	return promMiddleware.WrapHandler("api", h)
+	// })
+
+	// router.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{})).Methods(http.MethodGet)
 
 	router.Handle("/signup",
 		middleware.RateLimitMiddlewareTokenBucket(makeHTTPHandlerFunc(s.createAccount))).Methods(http.MethodPost)
 	router.Handle("/login",
 		middleware.RateLimitMiddlewareTokenBucket(makeHTTPHandlerFunc(s.loginAccount))).Methods(http.MethodPost)
-	router.HandleFunc("/health",
+	router.Handle("/health",
 		makeHTTPHandlerFunc(s.handleHealth)).Methods(http.MethodGet)
+
+	router.Handle("/auth/refresh", makeHTTPHandlerFunc(s.refreshTokenHandler)).Methods(http.MethodPost)
+	router.Handle("/expense", security.ValidateAccessTokenMiddleware(makeHTTPHandlerFunc(s.uploadExpenses))).Methods(http.MethodGet)
+	router.Handle("/", security.ValidateAccessTokenMiddleware(makeHTTPHandlerFunc(s.retriveExpenses))).Methods(http.MethodGet)
 
 	serve := &http.Server{
 		Addr:         s.listenAddr,
@@ -102,17 +118,17 @@ func (s *Server) loginAccount(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	client := database.GetRedisClient()
-	ctx := context.Background()
-	userKey := fmt.Sprintf("user:%s:accessToken", user.User.ID)
-	if err := client.Set(ctx, userKey, user.AccessToken, 15*time.Minute).Err(); err != nil {
-		slog.Error("Failed to store user token in Redis", "error", err, "userId", user.User.ID)
-	}
+	database.Set(
+		user.User.ID,
+		user.AccessToken,
+		30*time.Minute,
+		context.Background(),
+	)
 
 	token := &types.RefreshToken{
 		UserID:       user.User.ID,
 		RefreshToken: user.RefreshToken,
-		ExpiresAt:    time.Now().Add(7 * 24 * 60 * 60),
+		ExpiresAt:    time.Now().Add(7 * 24 * time.Hour),
 	}
 
 	s.store.StoreRefreshToken(token)
@@ -144,8 +160,101 @@ func (s *Server) createAccount(w http.ResponseWriter, r *http.Request) error {
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) error {
 	err := s.store.Ping()
 	if err != nil {
-		return err
+		slog.Error("Health check failed", "error", err)
+		return writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+			"status": "unhealthy",
+			"error":  err.Error(),
+		})
 	}
 
 	return writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *Server) refreshTokenHandler(w http.ResponseWriter, r *http.Request) error {
+	refreshSecret := os.Getenv("REFRESH_TOKEN")
+	if refreshSecret == "" {
+		log.Println("Warning: REFRESH_TOKEN environment variable is not set")
+	}
+
+	var refreshTokenValue string
+	authHeader := r.Header.Get("Authorization")
+	if authHeader != "" {
+		refreshTokenValue = strings.TrimPrefix(authHeader, "Bearer ")
+	} else {
+		refreshToken, err := r.Cookie("refresh_token")
+		if err != nil {
+			if err == http.ErrNoCookie {
+				return writeJSON(w, http.StatusBadRequest, "Refresh token required")
+			}
+			return writeJSON(w, http.StatusBadRequest, "Invalid request")
+		}
+		refreshTokenValue = refreshToken.Value
+	}
+
+	if refreshTokenValue == "" {
+		return writeJSON(w, http.StatusBadRequest, "Invalid token")
+	}
+
+	claims, err := s.validateRefreshToken(refreshTokenValue, refreshSecret)
+
+	if err != nil {
+		return writeJSON(w, http.StatusUnauthorized, "Validation failed!")
+	}
+
+	hashedToken := utils.HashToken(refreshTokenValue)
+	userID, err := s.store.ValidateRefreshToken(hashedToken)
+
+	if err != nil {
+		return writeJSON(w, http.StatusUnauthorized, "Invalid refresh token")
+	}
+
+	newAccessToken, err := api.CreateAccessToken(claims.Subject)
+	if err != nil {
+		return writeJSON(w, http.StatusInternalServerError, "Failed to generate token")
+	}
+
+	database.Set(userID, newAccessToken, 30*time.Minute, context.Background())
+
+	security.SetTokenCookies(w, newAccessToken, refreshTokenValue)
+
+	return writeJSON(w, http.StatusCreated, &types.TokenResponse{
+		AccessToken:  newAccessToken,
+		RefreshToken: refreshTokenValue,
+	})
+
+}
+
+func (s *Server) validateRefreshToken(tokenString string, refreshToken string) (*types.CustomClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &types.CustomClaims{}, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+		return []byte(refreshToken), nil
+	})
+
+	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, fmt.Errorf("token expired")
+		}
+		return nil, fmt.Errorf("invalid token")
+	}
+
+	claims, ok := token.Claims.(*types.CustomClaims)
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+
+	return claims, nil
+}
+
+func (s *Server) StartTokenCleanup(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+
+	go func() {
+		for range ticker.C {
+			if err := s.store.CleanupExpiredTokens(); err != nil {
+				log.Printf("Token cleanup failed: %v", err)
+			}
+		}
+	}()
 }
