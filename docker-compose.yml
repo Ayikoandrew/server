@@ -3,9 +3,12 @@ services:
     restart: unless-stopped
     container_name: engine
     build: .
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=host=liora port=${DB_PORT} password=${POSTGRES_PASSWORD} user=${POSTGRES_USER} dbname=${POSTGRES_DB} sslmode=disable
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:${REDIS_PORT}/0
+      - REFRESH_TOKEN=${REFRESH_TOKEN}
     ports:
       - "127.0.0.1:${PORT}:${PORT}"
     depends_on:
