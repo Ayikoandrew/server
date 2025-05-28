@@ -1,6 +1,10 @@
 package types
 
-import "time"
+import (
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+)
 
 type Account struct {
 	FirstName   string `json:"firstName"`
@@ -36,4 +40,24 @@ type RefreshToken struct {
 	RefreshToken string    `json:"refresh_token"`
 	ExpiresAt    time.Time `json:"expires_at"`
 	Revoked      bool      `json:"revoked"`
+}
+
+// type RefreshToken struct {
+// 	UserID    string    `json:"user_id"`
+// 	FamilyID  string    `json:"family_id"`
+// 	TokenID   string    `json:"token_id"`
+// 	TokenHash string    `json:"token_hash"`
+// 	Revoked   bool      `json:"revoked"`
+// 	ExpiresAt time.Time `json:"expires_at"`
+// 	CreatedAt time.Time `json:"created_at"`
+// }
+
+type CustomClaims struct {
+	UserID string `json:"user_id"`
+	jwt.RegisteredClaims
+}
+
+type TokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }
