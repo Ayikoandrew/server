@@ -17,7 +17,7 @@ var (
 	once sync.Once
 )
 
-func GetRedisClient() *redis.Client {
+func getRedisClient() *redis.Client {
 	once.Do(func() {
 		rdb = NewRDB()
 	})
@@ -25,7 +25,7 @@ func GetRedisClient() *redis.Client {
 }
 
 func InitRedis() {
-	GetRedisClient()
+	getRedisClient()
 }
 
 func NewRDB() *redis.Client {
@@ -73,4 +73,27 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+// Stores access token to redis with the key as user:<user_id>:accessToken
+func Set(id, accessToken string, expiry time.Duration, ctx context.Context) {
+	client := getRedisClient()
+	userKey := fmt.Sprintf("user:%s:accessToken", id)
+	if err := client.Set(ctx, userKey, accessToken, expiry).Err(); err != nil {
+		slog.Error("Failed to store user token in Redis", "error", err, "userId", id)
+	}
+}
+
+func Get(id string, ctx context.Context) *redis.StringCmd {
+	client := getRedisClient()
+	userKey := fmt.Sprintf("user:%s:accessToken", id)
+	return client.Get(ctx, userKey)
+}
+
+func Delete(id string, ctx context.Context) {
+	client := getRedisClient()
+	userKey := fmt.Sprintf("user:%s:accessToken", id)
+	if err := client.Del(ctx, userKey).Err(); err != nil {
+		slog.Error("Failed to delete token in Redis", "error", err, "userId", id)
+	}
 }

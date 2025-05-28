@@ -1,16 +1,15 @@
 package database
 
 import (
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"os"
 	"time"
 
-	"github.com/Ayikoandrew/server/security"
+	api "github.com/Ayikoandrew/server/functions"
 	"github.com/Ayikoandrew/server/types"
+	"github.com/Ayikoandrew/server/utils"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -61,14 +60,21 @@ func (s *Storage) CreateTable() error {
 	query := `
 	-- Create tables if they don't exist
 	CREATE TABLE IF NOT EXISTS users(
-					id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-					firstName VARCHAR(255),
-					lastName VARCHAR(255),
-					phoneNumber VARCHAR(20),
-					email VARCHAR(255) UNIQUE,
-					passwordHash BYTEA,
-					createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-		);
+		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		firstName VARCHAR(255),
+		lastName VARCHAR(255),
+		phoneNumber VARCHAR(20),
+		email VARCHAR(255) UNIQUE,
+		passwordHash BYTEA,
+		createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_users_id ON users (id);
+
+	CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
+
+	CREATE INDEX IF NOT EXISTS idx_users_phonenumber ON users (phoneNumber);
+
 	CREATE TABLE IF NOT EXISTS user_sessions (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
         user_id UUID NOT NULL,
@@ -153,12 +159,12 @@ func (s *Storage) Authenticate(password, email string) (types.LoginResponse, err
 		return types.LoginResponse{}, err
 	}
 
-	accessToken, err := security.CreateAccessToken(&user)
+	accessToken, err := api.CreateAccessToken(user.ID)
 	if err != nil {
 		return types.LoginResponse{}, err
 	}
 
-	refreshToken, err := security.CreateRefreshToken(&user)
+	refreshToken, err := api.CreateRefreshToken(user.ID)
 	if err != nil {
 		return types.LoginResponse{}, err
 	}
@@ -170,24 +176,88 @@ func (s *Storage) Authenticate(password, email string) (types.LoginResponse, err
 	}, nil
 }
 
-func (s *Storage) StoreRefreshToken(refresh *types.RefreshToken) {
-
+func (s *Storage) StoreRefreshToken(refresh *types.RefreshToken) error {
 	query := `
-		INSERT INTO user_sessions (user_id, refresh_token, expires_at, revoked) 
-		VALUES ($1, $2, $3, $4) RETURNING id
-			`
-	h := sha256.New()
-	h.Write([]byte(refresh.RefreshToken))
-	hashedToken := h.Sum(nil)
-	hexToken := hex.EncodeToString(hashedToken[:])
-	_, err := s.db.Exec(query,
+        INSERT INTO user_sessions (user_id, refresh_token, expires_at, revoked) 
+        VALUES ($1, $2, $3, $4) RETURNING id
+    `
+
+	hexToken := utils.HashToken(refresh.RefreshToken)
+
+	var sessionID string
+	err := s.db.QueryRow(query,
 		refresh.UserID,
 		hexToken,
 		refresh.ExpiresAt,
 		refresh.Revoked,
+	).Scan(&sessionID)
+
+	if err != nil {
+		slog.Error("Error inserting user session", "err", err.Error())
+		return fmt.Errorf("failed to store refresh token: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Storage) ValidateRefreshToken(tokenHash string) (string, error) {
+	query := `SELECT user_id FROM user_sessions 
+    WHERE refresh_token = $1 AND revoked = FALSE AND expires_at > NOW()`
+
+	var userID string
+	if err := s.db.QueryRow(query, tokenHash).Scan(&userID); err != nil {
+		return "", err
+	}
+	return userID, nil
+}
+
+func (s *Storage) RevokeToken(tokenHash string) error {
+	query := `UPDATE user_sessions 
+        SET revoked = TRUE 
+        WHERE refresh_token = $1`
+
+	result, err := s.db.Exec(query, tokenHash)
+	if err != nil {
+		slog.Error("Error revoking token", "error", err)
+		return fmt.Errorf("failed to revoke token: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to check affected rows: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("token not found")
+	}
+	return nil
+}
+
+func (s *Storage) RevokeAllUserTokens(userID string) error {
+	query := `UPDATE user_sessions 
+        SET revoked = TRUE 
+        WHERE user_id = $1 AND revoked = FALSE`
+
+	result, err := s.db.Exec(query, userID)
+	if err != nil {
+		slog.Error("Error revoking all user tokens", "error", err)
+		return fmt.Errorf("failed to revoke tokens: %w", err)
+	}
+
+	_, err = result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to check affected rows: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Storage) CleanupExpiredTokens() error {
+	_, err := s.db.Exec(
+		`DELETE FROM user_sessions WHERE expires_at < NOW()`,
 	)
 	if err != nil {
-		slog.Error("Error inserting user session", "err", err)
-		return
+		return err
 	}
+	return nil
 }
