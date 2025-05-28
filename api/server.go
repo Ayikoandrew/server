@@ -56,6 +56,7 @@ func (s *Server) Run() {
 		middleware.RateLimitMiddlewareTokenBucket(makeHTTPHandlerFunc(s.loginAccount))).Methods(http.MethodPost)
 	router.Handle("/health",
 		makeHTTPHandlerFunc(s.handleHealth)).Methods(http.MethodGet)
+	router.Handle("/logout", middleware.RateLimitMiddlewareTokenBucket(makeHTTPHandlerFunc(s.logoutHandler))).Methods(http.MethodPost)
 
 	router.Handle("/auth/refresh", makeHTTPHandlerFunc(s.refreshTokenHandler)).Methods(http.MethodPost)
 	router.Handle("/expense", security.ValidateAccessTokenMiddleware(makeHTTPHandlerFunc(s.uploadExpenses))).Methods(http.MethodGet)
@@ -184,7 +185,7 @@ func (s *Server) refreshTokenHandler(w http.ResponseWriter, r *http.Request) err
 		refreshToken, err := r.Cookie("refresh_token")
 		if err != nil {
 			if err == http.ErrNoCookie {
-				return writeJSON(w, http.StatusBadRequest, "Refresh token required")
+				return writeJSON(w, http.StatusBadRequest, "Token required")
 			}
 			return writeJSON(w, http.StatusBadRequest, "Invalid request")
 		}
@@ -224,6 +225,38 @@ func (s *Server) refreshTokenHandler(w http.ResponseWriter, r *http.Request) err
 
 }
 
+func (s *Server) logoutHandler(w http.ResponseWriter, r *http.Request) error {
+	accessSecret := os.Getenv("ACCESS_TOKEN")
+
+	accessToken, err := r.Cookie("access_token")
+	if err != nil {
+		if err == http.ErrNoCookie {
+			return writeJSON(w, http.StatusBadRequest, "Token required")
+		}
+		return writeJSON(w, http.StatusBadRequest, "Invalid request")
+	}
+
+	claims, err := s.validateAccessToken(accessToken.Value, accessSecret)
+	if err != nil {
+		return writeJSON(w, http.StatusUnauthorized, "Validation failed!")
+	}
+
+	userID := claims.Subject
+
+	if err := s.store.RevokeAllUserTokens(userID); err != nil {
+		return writeJSON(w, http.StatusInternalServerError, "Logout failed")
+	}
+
+	database.Delete(userID, context.Background())
+
+	security.ClearTokenCookies(w)
+
+	return writeJSON(w, http.StatusOK, map[string]string{
+		"message": "Successfully logged out",
+	})
+
+}
+
 func (s *Server) validateRefreshToken(tokenString string, refreshToken string) (*types.CustomClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &types.CustomClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -232,6 +265,28 @@ func (s *Server) validateRefreshToken(tokenString string, refreshToken string) (
 		return []byte(refreshToken), nil
 	})
 
+	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, fmt.Errorf("token expired")
+		}
+		return nil, fmt.Errorf("invalid token")
+	}
+
+	claims, ok := token.Claims.(*types.CustomClaims)
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+
+	return claims, nil
+}
+
+func (s *Server) validateAccessToken(tokenString string, accessToken string) (*types.CustomClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &types.CustomClaims{}, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+		return []byte(accessToken), nil
+	})
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
 			return nil, fmt.Errorf("token expired")
