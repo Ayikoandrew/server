@@ -1,463 +1,449 @@
 # Liora Server - Backend API for Payment Application
 
-The robust Go backend powering **Liora**, a modern financial application. Provides secure authentication, user management, and payment infrastructure with planned smart contract integration and zkSync Layer 2 scaling.
+The robust Go backend powering **Liora**, a modern financial application. Provides secure authentication, user management, and payment infrastructure with planned smart contract integration using **abigen** for Go bindings and zkSync Layer 2 scaling.
 
 ![Go](https://img.shields.io/badge/go-%2300ADD8.svg?style=for-the-badge&logo=go&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
 ![Redis](https://img.shields.io/badge/redis-%23DD0031.svg?style=for-the-badge&logo=redis&logoColor=white)
-![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
-![Flutter](https://img.shields.io/badge/flutter-%2302569B.svg?style=for-the-badge&logo=flutter&logoColor=white)
+![Ethereum](https://img.shields.io/badge/ethereum-%23627EEA.svg?style=for-the-badge&logo=ethereum&logoColor=white)
+![Solidity](https://img.shields.io/badge/solidity-%23363636.svg?style=for-the-badge&logo=solidity&logoColor=white)
 
 ## 🏦 About Liora
 
 Liora is a comprehensive financial ecosystem consisting of:
 - **💱 Flutter Mobile App** ([Ayikoandrew/liora](https://github.com/Ayikoandrew/liora)) - Cross-platform payment interface
-- **🚀 Go Backend Server** (this repository) - Secure API and business logic
+- **🚀 Go Backend Server** (this repository) - Secure API with smart contract integration
 - **🌐 Smart Contracts** (planned) - Blockchain-based payment infrastructure
 - **⚡ zkSync Integration** (planned) - Scalable L2 payment processing
+- **🔗 Abigen Bindings** (planned) - Type-safe smart contract interactions
 
-## 🚀 Current Features
+## 🔮 Planned Features - Blockchain Integration
 
-### 🔐 Authentication & Security
-- **JWT Token System** - Secure access and refresh token management
-- **Session Management** - Redis-powered user sessions with automatic cleanup
-- **Password Security** - bcrypt hashing with industry-standard cost factors
-- **Rate Limiting** - Advanced token bucket algorithm protecting against abuse
-- **Secure Cookies** - HTTP-only, secure, SameSite protection
+### 🔗 Smart Contract Integration with Abigen
+- **📜 Contract Bindings** - Auto-generated Go types from Solidity contracts
+- **🔒 Type Safety** - Compile-time contract interaction validation
+- **⚡ Efficient Calls** - Direct contract method invocation from Go
+- **📡 Event Listening** - Real-time blockchain event monitoring
+- **🔄 Transaction Management** - Automated gas estimation and transaction handling
 
-### 👤 User Management
-- **Account Creation** - User registration with validation
-- **Profile Management** - Full name, email, and phone number support
-- **Authentication** - Secure login with credential validation
-- **Session Tracking** - Multi-device session management
-
-### 🏗️ Infrastructure
-- **PostgreSQL Database** - ACID-compliant user data storage with optimized indexes
-- **Redis Caching** - Sub-millisecond session and token lookups
-- **Health Monitoring** - Database connectivity and system health checks
-- **Performance Profiling** - Built-in pprof for real-time performance monitoring
-- **Graceful Shutdown** - Clean server termination with signal handling
-
-### 🛡️ Security & Protection
-- **Client IP Detection** - Smart proxy-aware IP identification
-- **CORS Protection** - Configurable cross-origin request handling
-- **Request Validation** - Comprehensive input sanitization
-- **Token Expiration** - Automatic cleanup of expired authentication tokens
-
-## 🔮 Planned Features - Payment & Blockchain
-
-### 💰 Payment Infrastructure
-- **💳 Digital Wallet Management** - Secure wallet creation and management
-- **💸 Money Transfers** - Peer-to-peer and merchant payments
-- **💱 Multi-Currency Support** - Fiat and cryptocurrency transactions
-- **📊 Transaction History** - Comprehensive payment tracking and analytics
-- **🔄 Real-time Notifications** - Instant payment confirmations
-
-### 🌐 Smart Contract Integration
-- **🔗 User Verification Contract** - On-chain identity verification system
-- **🎯 Payment Processing** - Automated smart contract-based transactions
-- **🏆 Reward System** - Token-based incentives for platform engagement
-- **🗳️ Governance Tokens** - Decentralized platform decision-making
-- **🎨 Achievement NFTs** - Blockchain-based user accomplishments
+### 💰 Blockchain Payment Features
+- **💳 On-Chain Wallets** - Smart contract-managed user wallets
+- **💸 Instant Transfers** - Direct blockchain-based payments
+- **🎯 Multi-Token Support** - ERC-20 token handling via abigen
+- **📊 Transaction Tracking** - Real-time blockchain transaction monitoring
+- **🔄 Automated Settlements** - Smart contract-based payment processing
 
 ### ⚡ zkSync Layer 2 Features
-- **🚄 Fast Transactions** - Near-instant payment processing
-- **💸 Low-Cost Operations** - Minimal transaction fees for micro-payments
-- **🔄 Batch Processing** - Efficient bulk payment handling
-- **🌉 Cross-Chain Bridge** - Seamless asset transfers between networks
-- **📈 Scalable Infrastructure** - Handle thousands of transactions per second
+- **🚄 Fast Transactions** - Near-instant payment processing via L2 contracts
+- **💸 Low-Cost Operations** - Minimal fees through zkSync Era integration
+- **🔄 Batch Processing** - Efficient bulk payment handling with abigen
+- **🌉 L1/L2 Bridge** - Seamless asset transfers between layers
 
-## 🏗️ Architecture
+## 🏗️ Enhanced Architecture with Blockchain
 
 ```
-Liora Ecosystem Architecture
+Liora Ecosystem with Blockchain Integration
 ┌─────────────────────────────────────────────────────────────┐
 │                    Frontend (Flutter)                       │
-│  🏠 Home Dashboard  💰 Buy/Purchase  🔄 Transfer           │
-│  📈 Market Data     💳 Card Management  🌙 Themes         │
+│  🏠 Dashboard  💰 Payments  🔄 Transfers  📈 DeFi          │
 └─────────────────────┬───────────────────────────────────────┘
-                      │ REST API
+                      │ REST API + WebSocket
 ┌─────────────────────▼───────────────────────────────────────┐
 │                 Backend Server (Go)                        │
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────────────┐   │
-│  │    Auth     │ │   Users     │ │     Payments        │   │
-│  │   Service   │ │  Service    │ │     (Planned)       │   │
-│  └─────────────┘ └─────────────┘ └─────────────────────┘   │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────────┐
-│                Data Layer                                   │
+│  │    Auth     │ │  Payments   │ │    Blockchain       │   │
+│  │   Service   │ │   Service   │ │     Service         │   │
+│  └─────────────┘ └─────────────┘ └─────────┬───────────┘   │
+│                                           │               │
+│  ┌─────────────────────────────────────────▼─────────────┐ │
+│  │              Abigen Bindings                         │ │
+│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────────┐ │ │
+│  │  │   Payments  │ │    Users    │ │     zkSync      │ │ │
+│  │  │  Contract   │ │  Registry   │ │   Contracts     │ │ │
+│  │  └─────────────┘ └─────────────┘ └─────────────────┘ │ │
+│  └─────────────────────────────────────────┬─────────────┘ │
+└──────────────────────────────────────────────┼───────────────┘
+                                             │
+┌──────────────────────────────────────────────▼───────────────┐
+│                    Blockchain Layer                          │
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────────────┐   │
-│  │ PostgreSQL  │ │    Redis    │ │    Blockchain       │   │
-│  │ (Users DB)  │ │ (Sessions)  │ │    (Planned)        │   │
+│  │  Ethereum   │ │   zkSync    │ │      IPFS           │   │
+│  │  Mainnet    │ │    Era      │ │   (Metadata)        │   │
 │  └─────────────┘ └─────────────┘ └─────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Server Directory Structure
+### Enhanced Server Directory Structure
 ```
 ├── main.go                 # Application entry point
 ├── api/                    # HTTP handlers and routing
 │   └── server.go          # Main server setup and endpoints
-├── database/               # Data persistence layer
-│   ├── storage.go         # PostgreSQL operations
-│   ├── redis_liora.go     # Redis session management
-│   └── db_handler.go      # Database interface definitions
-├── middleware/             # HTTP middleware stack
-│   ├── rate_limit.go      # Rate limiting implementation
-│   └── getclient.go       # Client IP detection
-├── security/               # Security utilities
-│   └── cookies.go         # Secure cookie management
-├── functions/              # Business logic layer
-│   └── auth.go            # JWT token operations
-├── types/                  # Data structures and models
-├── config/                 # Configuration management
-│   └── config.go          # Environment configuration
-└── contracts/              # Smart contracts (planned)
-    ├── UserRegistry.sol   # User verification
-    ├── PaymentProcessor.sol # Payment handling
-    └── zkSync/            # Layer 2 contracts
+├── blockchain/             # Blockchain integration layer
+│   ├── client.go          # Ethereum/zkSync client setup
+│   ├── contracts/         # Generated abigen bindings
+│   │   ├── payments.go    # Payment contract bindings
+│   │   ├── registry.go    # User registry bindings
+│   │   └── zksync.go      # zkSync contract bindings
+│   ├── events.go          # Blockchain event listeners
+│   ├── transactions.go    # Transaction management
+│   └── wallet.go          # Wallet operations
+├── contracts/             # Solidity smart contracts
+│   ├── Payments.sol       # Main payment contract
+│   ├── UserRegistry.sol   # User verification contract
+│   └── zkSync/            # zkSync-specific contracts
+│       ├── L2Payments.sol # Layer 2 payment processing
+│       └── Bridge.sol     # L1/L2 bridge contract
+├── scripts/               # Development and deployment scripts
+│   ├── generate-bindings.sh # Abigen binding generation
+│   ├── deploy-contracts.sh  # Contract deployment
+│   └── migrate.sh          # Database migrations
+├── database/              # Data persistence layer
+├── middleware/            # HTTP middleware stack
+├── security/              # Security utilities
+├── functions/             # Business logic layer
+├── types/                 # Data structures and models
+└── config/               # Configuration management
 ```
 
-## 🛠️ Tech Stack
+## 🛠️ Enhanced Tech Stack
 
-### Current Backend Stack
-- **Backend**: Go 1.21+ with Gorilla Mux routing
-- **Database**: PostgreSQL 13+ with pgx driver
-- **Cache**: Redis 6+ for session management
-- **Authentication**: JWT tokens with RS256 signing
-- **Security**: bcrypt password hashing
-- **Monitoring**: pprof performance profiling
-- **Deployment**: Docker containers
-
-### Frontend Integration
-- **Mobile App**: Flutter with Dart
-- **State Management**: Riverpod
-- **UI Framework**: Material Design 3
-- **Platforms**: iOS & Android
-- **API Communication**: HTTP REST with JSON
-
-### Planned Blockchain Stack
-- **Smart Contracts**: Solidity with OpenZeppelin
+### Blockchain Integration Stack
+- **Smart Contract Language**: Solidity with OpenZeppelin
+- **Go Bindings**: Abigen for type-safe contract interactions
+- **Ethereum Client**: go-ethereum (geth) for blockchain connectivity
 - **Layer 2**: zkSync Era for scalable payments
-- **Web3 Integration**: Ethereum-compatible wallets
-- **Token Standards**: ERC-20 (payments), ERC-721 (NFTs)
-- **Development**: Foundry
+- **Development Tools**: Hardhat, Foundry for contract development
+- **Token Standards**: ERC-20 (payments), ERC-721 (achievements)
 
-## 🚀 Quick Start
-
-### Prerequisites
-- Go 1.21 or higher
-- PostgreSQL 13+
-- Redis 6+
-- Docker (optional)
-
-### Environment Configuration
-Create a `.env` file in the root directory:
-
+### Abigen Workflow
 ```bash
-# Server Configuration
-PORT=8080
+# Generate Go bindings from compiled contracts
+abigen --abi contracts/build/Payments.abi \
+       --pkg contracts \
+       --type Payments \
+       --out blockchain/contracts/payments.go
 
-# Database Configuration
-DATABASE_URL=postgres://user:password@localhost:5432/liora_db
-
-# Redis Configuration
-REDIS_URL=redis://localhost:6379
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=your_redis_password
-
-# JWT Secrets 
-ACCESS_TOKEN=your_super_secret_access_token_key_min_32_chars
-REFRESH_TOKEN=your_super_secret_refresh_token_key_min_32_chars
-
-# Database Components (alternative to DATABASE_URL)
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=liora_db
-DB_USER=liora_user
-DB_PASSWORD=secure_password
+abigen --abi contracts/build/UserRegistry.abi \
+       --pkg contracts \
+       --type UserRegistry \
+       --out blockchain/contracts/registry.go
 ```
 
-### Installation & Setup
+## 🚀 Enhanced Setup with Blockchain
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/Ayikoandrew/server.git
-   cd server
-   ```
+### Additional Prerequisites
+- **Node.js** 16+ (for Hardhat/contract development)
+- **Ethereum Node** or **Infura/Alchemy** API key
+- **Abigen** (part of go-ethereum)
 
-2. **Install Go dependencies**
-   ```bash
-   go mod download
-   go mod tidy
-   ```
+### Blockchain Development Setup
 
-3. **Set up PostgreSQL**
+1. **Install blockchain development tools**
    ```bash
-   # Create database (schema is auto-created on first run)
-   createdb liora_db
-   ```
-
-4. **Start Redis**
-   ```bash
-   # Using Docker
-   docker run -d --name redis -p 6379:6379 redis:alpine
+   # Install go-ethereum (includes abigen)
+   go install github.com/ethereum/go-ethereum/cmd/abigen@latest
    
-   # Or install locally
-   redis-server
+   # Install Node.js dependencies for smart contracts
+   npm install --save-dev hardhat @openzeppelin/contracts
    ```
 
-5. **Run the server**
+2. **Environment configuration with blockchain**
    ```bash
-   # Development mode
-   go run main.go
+   # Add to your .env file
    
-   # Build and run
-   go build -o liora-server
+   # Ethereum Configuration
+   ETH_RPC_URL=https://mainnet.infura.io/v3/your-project-id
+   ETH_PRIVATE_KEY=your-wallet-private-key-for-deployment
+   ETH_CHAIN_ID=1
+   
+   # zkSync Configuration
+   ZKSYNC_RPC_URL=https://mainnet.era.zksync.io
+   ZKSYNC_CHAIN_ID=324
+   
+   # Contract Addresses (after deployment)
+   PAYMENTS_CONTRACT=0x742d35Cc6634C0532925a3b8D1C11C0532925a3b
+   REGISTRY_CONTRACT=0x742d35Cc6634C0532925a3b8D1C11C0532925a3b
+   ZKSYNC_PAYMENTS_CONTRACT=0x742d35Cc6634C0532925a3b8D1C11C0532925a3b
+   
+   # API Keys
+   INFURA_PROJECT_ID=your-infura-project-id
+   ALCHEMY_API_KEY=your-alchemy-api-key
+   ```
+
+3. **Generate contract bindings**
+   ```bash
+   # Make the script executable
+   chmod +x scripts/generate-bindings.sh
+   
+   # Generate Go bindings from smart contracts
+   ./scripts/generate-bindings.sh
+   ```
+
+4. **Run with blockchain integration**
+   ```bash
+   # Development mode with blockchain
+   go run main.go --enable-blockchain
+   
+   # Production build
+   go build -tags blockchain -o liora-server
    ./liora-server
    ```
 
-6. **Verify installation**
-   ```bash
-   # Health check
-   curl http://localhost:8080/health
-   
-   # Performance profiling
-   curl http://localhost:6060/debug/pprof/
-   ```
+## 📋 Smart Contract Integration Examples
 
-## 📚 API Documentation
+### Using Abigen Bindings in Go
 
-### Authentication Endpoints
+```go
+package blockchain
 
-| Method | Endpoint | Description | Request Body |
-|--------|----------|-------------|--------------|
-| `POST` | `/api/register` | Create new user account | User registration data |
-| `POST` | `/api/login` | Authenticate user | Email/phone + password |
-| `POST` | `/api/refresh` | Refresh access token | Refresh token |
-| `POST` | `/api/logout` | Terminate user session | - |
+import (
+    "context"
+    "crypto/ecdsa"
+    "math/big"
+    
+    "github.com/ethereum/go-ethereum/accounts/abi/bind"
+    "github.com/ethereum/go-ethereum/common"
+    "github.com/ethereum/go-ethereum/crypto"
+    "github.com/ethereum/go-ethereum/ethclient"
+    
+    "github.com/Ayikoandrew/server/blockchain/contracts"
+)
 
-### System Endpoints
+type BlockchainService struct {
+    client          *ethclient.Client
+    paymentsContract *contracts.Payments
+    registryContract *contracts.UserRegistry
+    privateKey      *ecdsa.PrivateKey
+}
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/health` | System health check |
-| `GET` | `/debug/pprof/` | Performance profiling |
+func NewBlockchainService(rpcURL, privateKeyHex, paymentsAddr, registryAddr string) (*BlockchainService, error) {
+    // Connect to Ethereum client
+    client, err := ethclient.Dial(rpcURL)
+    if err != nil {
+        return nil, err
+    }
+    
+    // Load private key for transactions
+    privateKey, err := crypto.HexToECDSA(privateKeyHex)
+    if err != nil {
+        return nil, err
+    }
+    
+    // Initialize contract instances using abigen bindings
+    paymentsContract, err := contracts.NewPayments(
+        common.HexToAddress(paymentsAddr), 
+        client,
+    )
+    if err != nil {
+        return nil, err
+    }
+    
+    registryContract, err := contracts.NewUserRegistry(
+        common.HexToAddress(registryAddr), 
+        client,
+    )
+    if err != nil {
+        return nil, err
+    }
+    
+    return &BlockchainService{
+        client:          client,
+        paymentsContract: paymentsContract,
+        registryContract: registryContract,
+        privateKey:      privateKey,
+    }, nil
+}
 
-### Request/Response Examples
+// Process payment using smart contract
+func (bs *BlockchainService) ProcessPayment(fromAddr, toAddr string, amount *big.Int) error {
+    auth, err := bind.NewKeyedTransactorWithChainID(bs.privateKey, big.NewInt(1))
+    if err != nil {
+        return err
+    }
+    
+    // Call smart contract method through abigen binding
+    tx, err := bs.paymentsContract.Transfer(
+        auth,
+        common.HexToAddress(fromAddr),
+        common.HexToAddress(toAddr),
+        amount,
+    )
+    if err != nil {
+        return err
+    }
+    
+    log.Printf("Payment transaction sent: %s", tx.Hash().Hex())
+    return nil
+}
 
-**User Registration:**
-```bash
-curl -X POST http://localhost:8080/api/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "firstName": "John",
-    "lastName": "Doe",
-    "email": "john.doe@example.com",
-    "phoneNumber": "+1234567890",
-    "password": "SecurePassword123!"
-  }'
-```
+// Register user on blockchain
+func (bs *BlockchainService) RegisterUser(userID, walletAddr string) error {
+    auth, err := bind.NewKeyedTransactorWithChainID(bs.privateKey, big.NewInt(1))
+    if err != nil {
+        return err
+    }
+    
+    // Convert userID to bytes32 for contract
+    userIDBytes := [32]byte{}
+    copy(userIDBytes[:], userID)
+    
+    tx, err := bs.registryContract.RegisterUser(
+        auth,
+        userIDBytes,
+        common.HexToAddress(walletAddr),
+    )
+    if err != nil {
+        return err
+    }
+    
+    log.Printf("User registration transaction: %s", tx.Hash().Hex())
+    return nil
+}
 
-**User Authentication:**
-```bash
-curl -X POST http://localhost:8080/api/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "john.doe@example.com",
-    "password": "SecurePassword123!"
-  }'
-```
-
-**Response Format:**
-```json
-{
-  "user": {
-    "id": "uuid-string",
-    "firstName": "John",
-    "lastName": "Doe",
-    "email": "john.doe@example.com",
-    "phoneNumber": "+1234567890",
-    "createdAt": "2025-06-22T17:00:00Z"
-  },
-  "accessToken": "jwt-access-token",
-  "refreshToken": "jwt-refresh-token"
+// Listen for payment events
+func (bs *BlockchainService) ListenForPayments(ctx context.Context) error {
+    // Create event filter using abigen
+    iterator, err := bs.paymentsContract.FilterTransfer(
+        &bind.FilterOpts{Context: ctx},
+        []common.Address{}, // from addresses (empty = all)
+        []common.Address{}, // to addresses (empty = all)
+    )
+    if err != nil {
+        return err
+    }
+    defer iterator.Close()
+    
+    for iterator.Next() {
+        event := iterator.Event
+        log.Printf("Payment detected: %s -> %s, Amount: %s", 
+            event.From.Hex(), 
+            event.To.Hex(), 
+            event.Amount.String(),
+        )
+        
+        // Process the payment event in your business logic
+        // e.g., update database, send notifications, etc.
+    }
+    
+    return iterator.Error()
 }
 ```
 
-## 🗄️ Database Schema
+### Smart Contract Example (Solidity)
 
-### Users Table
-```sql
-CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    firstName VARCHAR(255) NOT NULL,
-    lastName VARCHAR(255) NOT NULL,
-    phoneNumber VARCHAR(20) UNIQUE,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    passwordHash BYTEA NOT NULL,
-    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+```solidity
+// contracts/Payments.sol
+pragma solidity ^0.8.19;
 
--- Optimized indexes for fast lookups
-CREATE INDEX idx_users_email ON users (email);
-CREATE INDEX idx_users_phonenumber ON users (phoneNumber);
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract Payments is ERC20, Ownable {
+    mapping(address => bool) public verifiedUsers;
+    mapping(bytes32 => address) public userRegistry;
+    
+    event Transfer(address indexed from, address indexed to, uint256 amount);
+    event UserRegistered(bytes32 indexed userId, address indexed wallet);
+    
+    constructor() ERC20("Liora Token", "LIORA") {
+        _mint(msg.sender, 1000000 * 10**decimals());
+    }
+    
+    function registerUser(bytes32 userId, address wallet) external onlyOwner {
+        userRegistry[userId] = wallet;
+        verifiedUsers[wallet] = true;
+        emit UserRegistered(userId, wallet);
+    }
+    
+    function transfer(address to, uint256 amount) public override returns (bool) {
+        require(verifiedUsers[msg.sender], "User not verified");
+        require(verifiedUsers[to], "Recipient not verified");
+        
+        return super.transfer(to, amount);
+    }
+}
 ```
 
-### User Sessions Table
-```sql
-CREATE TABLE user_sessions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id),
-    refresh_token TEXT NOT NULL,
-    expires_at TIMESTAMPTZ NOT NULL,
-    revoked BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+## 📜 Abigen Integration Scripts
 
-CREATE INDEX idx_refresh_token ON user_sessions (refresh_token);
-CREATE INDEX idx_user_sessions_user_id ON user_sessions (user_id);
+### Generate Bindings Script
+```bash
+#!/bin/bash
+# scripts/generate-bindings.sh
+
+echo "Compiling smart contracts..."
+npx hardhat compile
+
+echo "Generating Go bindings with abigen..."
+
+# Generate Payments contract bindings
+abigen --abi artifacts/contracts/Payments.sol/Payments.abi \
+       --bin artifacts/contracts/Payments.sol/Payments.bin \
+       --pkg contracts \
+       --type Payments \
+       --out blockchain/contracts/payments.go
+
+# Generate UserRegistry contract bindings  
+abigen --abi artifacts/contracts/UserRegistry.sol/UserRegistry.abi \
+       --bin artifacts/contracts/UserRegistry.sol/UserRegistry.bin \
+       --pkg contracts \
+       --type UserRegistry \
+       --out blockchain/contracts/registry.go
+
+# Generate zkSync contract bindings
+abigen --abi artifacts/contracts/zkSync/L2Payments.sol/L2Payments.abi \
+       --bin artifacts/contracts/zkSync/L2Payments.sol/L2Payments.bin \
+       --pkg contracts \
+       --type L2Payments \
+       --out blockchain/contracts/zksync.go
+
+echo "✅ Go bindings generated successfully!"
+echo "📁 Files created in blockchain/contracts/"
 ```
 
-### Planned Payment Tables
-```sql
--- Coming with payment feature implementation
-CREATE TABLE wallets (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id),
-    balance DECIMAL(20,8) DEFAULT 0.00,
-    currency VARCHAR(10) DEFAULT 'USD',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+### Development Workflow
+```bash
+# 1. Develop smart contracts
+vim contracts/Payments.sol
 
-CREATE TABLE transactions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    from_wallet_id UUID REFERENCES wallets(id),
-    to_wallet_id UUID REFERENCES wallets(id),
-    amount DECIMAL(20,8) NOT NULL,
-    transaction_type VARCHAR(50) NOT NULL,
-    status VARCHAR(20) DEFAULT 'pending',
-    blockchain_hash VARCHAR(66), -- For blockchain transactions
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+# 2. Compile and generate bindings
+./scripts/generate-bindings.sh
+
+# 3. Test contract integration
+go test ./blockchain/...
+
+# 4. Deploy contracts (testnet first)
+./scripts/deploy-contracts.sh --network sepolia
+
+# 5. Update contract addresses in .env
+vim .env
+
+# 6. Test full integration
+go run main.go --enable-blockchain
 ```
 
-## 🔒 Security Implementation
+## 🎯 Blockchain Development Roadmap
 
-### Authentication Flow
-1. **Registration**: bcrypt password hashing with cost factor 12
-2. **Login**: JWT token generation with 30-minute access tokens
-3. **Session Management**: Redis-stored refresh tokens (7-day expiry)
-4. **Token Refresh**: Automatic access token renewal
-5. **Logout**: Token revocation and session cleanup
-
-### Security Headers & Protection
-- **Rate Limiting**: 60 requests/minute per IP, 600 requests/minute globally
-- **CORS**: Configurable cross-origin protection
-- **Secure Cookies**: HTTP-only, secure, SameSite strict
-- **IP Validation**: Proxy-aware client IP detection
-- **Input Validation**: Comprehensive request sanitization
-
-### Performance Optimizations
-- **Connection Pooling**: 25 max database connections
-- **Redis Caching**: O(1) session lookups
-- **Query Optimization**: Indexed database queries
-- **Memory Management**: Automatic session cleanup
-- **Graceful Shutdown**: 15-second timeout for clean termination
-
-## 🔮 Smart Contract Roadmap
-
-### Phase 1: Core Infrastructure (Q3 2025)
-- **User Registry Contract** - On-chain user verification
-- **Payment Processor** - Smart contract-based transactions
-- **Token Standard** - ERC-20 LIORA utility token
+### Phase 1: Foundation (Q3 2025)
+- ✅ Set up abigen workflow and Go bindings
+- ✅ Implement basic payment contract
+- ✅ User registry with verification
+- ✅ Event listening and processing
 
 ### Phase 2: zkSync Integration (Q4 2025)
-- **L2 Deployment** - Migrate to zkSync Era mainnet
-- **Bridge Implementation** - L1 ↔ L2 asset transfers
-- **Batch Processing** - Optimized transaction bundling
+- 🔄 Deploy contracts to zkSync Era
+- 🔄 Implement L1/L2 bridge functionality
+- 🔄 Batch transaction processing
+- 🔄 Gas optimization strategies
 
 ### Phase 3: Advanced Features (Q1 2026)
-- **DeFi Integration** - Yield farming and staking
-- **NFT Achievements** - Gamified user experience
-- **Cross-Chain Support** - Multi-blockchain compatibility
-
-### Smart Contract Architecture (Planned)
-```solidity
-// Core payment processing contract
-contract LioraPayments {
-    mapping(address => uint256) public balances;
-    mapping(address => bool) public verified;
-    
-    function processPayment(address to, uint256 amount) external;
-    function verifyUser(address user, bytes32 proof) external;
-}
-
-// zkSync-specific optimizations
-contract LioraZkSync {
-    function batchTransfer(address[] calldata recipients, uint256[] calldata amounts) external;
-    function bridgeToL1(uint256 amount) external;
-}
-```
-
-## 🚀 Performance Metrics
-
-### Current Benchmarks
-- **Response Time**: < 100ms average API response
-- **Throughput**: 1000+ concurrent connections
-- **Database**: < 5ms query execution time
-- **Memory Usage**: < 50MB baseline memory footprint
-- **CPU Efficiency**: < 1% CPU usage at idle
-
-### Scalability Targets (with zkSync)
-- **Transaction Throughput**: 2000+ TPS
-- **Cost per Transaction**: < $0.01 USD
-- **Settlement Time**: < 10 seconds
-- **Global Accessibility**: 24/7 uptime, worldwide
-
-## 🤝 Contributing
-
-We welcome contributions to the Liora ecosystem! Here's how to get started:
-
-1. **Fork the repository**
-2. **Create a feature branch** (`git checkout -b feature/amazing-payment-feature`)
-3. **Follow Go conventions** (go fmt, go vet, go test)
-4. **Write comprehensive tests** for new functionality
-5. **Update documentation** as needed
-6. **Commit your changes** (`git commit -m 'Add amazing payment feature'`)
-7. **Push to your branch** (`git push origin feature/amazing-payment-feature`)
-8. **Open a Pull Request** with a detailed description
-
-### Development Guidelines
-- Follow Go best practices and idioms
-- Maintain > 80% test coverage
-- Document all public APIs
-- Use conventional commit messages
-- Test thoroughly with both unit and integration tests
-
-## 📝 License
-
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
-
-## 🔗 Related Projects
-
-- **📱 Liora Mobile App**: [Ayikoandrew/liora](https://github.com/Ayikoandrew/liora)
-- **🌐 Smart Contracts**: Coming soon
-- **📊 Analytics Dashboard**: Planned
-- **🔧 Admin Panel**: Planned
-
-## 🙏 Acknowledgments
-
-- **Go Community** - For excellent tooling and ecosystem
-- **Flutter Team** - For the powerful cross-platform framework
-- **zkSync** - For innovative Layer 2 scaling solutions
-- **PostgreSQL & Redis** - For robust data infrastructure
-- **Open Source Community** - For inspiration and collaboration
+- 🔮 Multi-signature wallet support
+- 🔮 DeFi integration (yield farming, staking)
+- 🔮 Cross-chain payment routing
+- 🔮 Advanced analytics and reporting
 
 ---
 
-**💰 Building the future of payments with Liora - Secure, Fast, and Borderless**
+**💰 Building the future of payments with Liora - Now with native blockchain integration via abigen**
 
-*Ready for Web3 integration with smart contracts and zkSync Layer 2 scaling*
+*Type-safe smart contract interactions powered by Go and Ethereum*
