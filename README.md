@@ -112,7 +112,7 @@ Liora Ecosystem with Blockchain Integration
 - **Go Bindings**: Abigen for type-safe contract interactions
 - **Ethereum Client**: go-ethereum (geth) for blockchain connectivity
 - **Layer 2**: zkSync Era for scalable payments
-- **Development Tools**: Hardhat, Foundry for contract development
+- **Development Tools**: Foundry for contract development
 - **Token Standards**: ERC-20 (payments), ERC-721 (achievements)
 
 ### Abigen Workflow
@@ -132,7 +132,6 @@ abigen --abi contracts/build/UserRegistry.abi \
 ## 🚀 Enhanced Setup with Blockchain
 
 ### Additional Prerequisites
-- **Node.js** 16+ (for Hardhat/contract development)
 - **Ethereum Node** or **Infura/Alchemy** API key
 - **Abigen** (part of go-ethereum)
 
